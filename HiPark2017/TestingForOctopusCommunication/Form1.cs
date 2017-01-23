@@ -147,6 +147,7 @@ namespace TestingForOctopusCommunication
         private void SQLChanges(object sender, EventArgs e)
         {
             DetechSQLChanges();
+            DetechSQLChangesForMisc();
         }
 
         public void DetechSQLChanges()
@@ -246,6 +247,103 @@ namespace TestingForOctopusCommunication
                 }
             }
         }
+
+        public void DetechSQLChangesForMisc()
+        {
+
+            using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnectionMisc"].ConnectionString)) //Old Version
+            {
+                if (sqlConnection.State != ConnectionState.Open)
+                {
+                    sqlConnection.Close();
+                    sqlConnection.Open();
+                }
+
+                using (var command = new SqlCommand(@"SELECT TABLE_NAME, COLUMN_NAME, ID, PAY_AMT FROM OCTOPUS_TRANS_VIEW WHERE STATUS_ID=0", sqlConnection))
+                {
+                    command.CommandTimeout = 55;
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+
+                            timer.Stop();
+                            var PAY_AMT = (int)reader["PAY_AMT"];
+                            var TABLE_NAME = (String)reader["TABLE_NAME"];
+                            var ID =(int)reader["ID"];
+                            var COLUMN_NAME = (String)reader["COLUMN_NAME"];
+                            log.Info(string.Format("Car ID {0}) Payment Amount {1} Invoice Number {2} in progress...........",
+                               TABLE_NAME, Convert.ToDecimal(PAY_AMT).ToString("#,##0.00"), COLUMN_NAME));
+
+                            this.TopMost = true;
+                            this.Show();
+                            this.WindowState = FormWindowState.Maximized;
+                            this.Activate();
+
+                            DisplayTxtbox.Clear();
+                            DisplayTxtbox.BackColor = Color.White;
+                            DisplayTxtbox.Text += "車牌號碼: " + COLUMN_NAME + Environment.NewLine;
+                            DisplayTxtbox.Text += "    付款: $" + Convert.ToDecimal(PAY_AMT).ToString("#,##0.00") + Environment.NewLine;
+                            DisplayTxtbox.Text += "交易進行中........" + Environment.NewLine;
+                            sqlResultTextBox.Clear();
+                            sqlResultTextBox.BackColor = Color.White;
+
+                            //DueAmountDisplaylabelText = "";
+                            //DueAmountDisplaylabel.Text = "$ " + Convert.ToDecimal(OctValue).ToString("#,##0.00");
+                            //CarIDisplaylaberl.Text = "";
+                            //CarIDisplaylaberl.Text = sqltransaction;
+                            //TransactionStatuslabel.Text = "交易進行中........";
+
+
+                            var communicateStatus = CheckQctopusConnection();
+                            log.Info("Check Communication Status " + GetErrorMessage(communicateStatus));
+                            if (communicateStatus == 0)
+                            {
+                                log.Info("Enable Transaction");
+                                OctGUINormalState();
+                            }
+
+                            #region PayAmountOver900
+
+                            if (PAY_AMT > 900) //If Pay Amount is over 900 HKD
+                            {
+                                timer.Stop();
+                                log.Info(string.Format("!!!!!!!!!!!!----  Payment Over HKD $900 "));
+
+                                OctPressPoll.Text = "超越八達通交易金額上限 HKD $900";
+                                OctPressPoll.Enabled = false;
+
+                                using (Form newForm = new Form())
+                                {
+                                    newForm.TopMost = true;
+                                    newForm.Activate();
+                                    MessageBox.Show(newForm, "超越八達通交易金額上限\n HKD $900\n" +
+                                                             "只可以用現金支付!");
+                                }
+                                OctPressPoll.Text = "八達通不接受";
+                                OctPressPoll.Enabled = false;
+
+
+                            }
+                            #endregion
+
+
+                            var sqlforEnableTransaction = new SqlClient();
+                            log.Info("Change Transaction to Pending.......");
+                            sqlforEnableTransaction.ErrorUpdateTableMisc();
+
+                            reader.Close();
+
+
+
+
+                        }
+
+                    }
+                }
+            }
+        }
+
 
         private void OctGUINormalState()
         {
@@ -1084,6 +1182,11 @@ namespace TestingForOctopusCommunication
         OctPressPoll:
             isBusy = true;
             CardEnquirybtn.Enabled = false;
+            CarParkingFeed();
+        }
+
+        private void CarParkingFeed()
+        {
             using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnection"].ConnectionString))
             {
                 if (sqlConnection.State != ConnectionState.Open)
@@ -1091,7 +1194,7 @@ namespace TestingForOctopusCommunication
                     sqlConnection.Close();
                     sqlConnection.Open();
                 }
-               
+
 
                 using (var command = new SqlCommand(@"SELECT  
        [REF_NO]
@@ -1121,9 +1224,9 @@ namespace TestingForOctopusCommunication
                                 sqltransaction, Convert.ToDecimal(OctValue).ToString("#,##0.00"), Ref_no));
 
                             //this.TopMost = true;
-                            //this.Show();
-                            //this.WindowState = FormWindowState.Maximized;
-                            // this.Activate()
+                        //this.Show();
+                        //this.WindowState = FormWindowState.Maximized;
+                        // this.Activate()
 
 
                         FirstPoll:
@@ -1148,32 +1251,32 @@ namespace TestingForOctopusCommunication
                                 string InvoiceNuberForAI = Ref_no.Substring(12, 2);
 
                                 //var additionalInformationForTransaction = InvoiceNuberForAI.ToCharArray();
-                                
-                               
-                                //char[] additionalInformationForTransaction = InvoiceNuberForAI.ToCharArray();;
-                            byte[] additionalInformationForTransaction = ASCIIEncoding.ASCII.GetBytes(InvoiceNuberForAI);
 
-                               Array.Resize(ref additionalInformationForTransaction,7);// double ensure that is 7bytes array
+
+                                //char[] additionalInformationForTransaction = InvoiceNuberForAI.ToCharArray();;
+                                byte[] additionalInformationForTransaction = ASCIIEncoding.ASCII.GetBytes(InvoiceNuberForAI);
+
+                                Array.Resize(ref additionalInformationForTransaction, 7);// double ensure that is 7bytes array
 
                                 additionalInformationForTransaction[5] = 0x01;
                                 additionalInformationForTransaction[6] = 0x01;
 
                                 //additionalInformationForTransaction[0] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length- 4, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length-3, 1)));
                                 //additionalInformationForTransaction[1] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length- 2, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length-1, 1)));
-                               // additionalInformationForTransaction[4] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(4, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(5, 1)));
+                                // additionalInformationForTransaction[4] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(4, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(5, 1)));
                                 //additionalInformationForTransaction[3] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(6, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(7, 1)));
                                 //additionalInformationForTransaction[4] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(8, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(9, 1)));
                                 //additionalInformationForTransaction[5] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(10, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(11, 1)));
                                 //additionalInformationForTransaction[6] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(12, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(13, 1)));
 
 
-                              //byte[] someBytes = StringToByteArray(additionalInformationForTransaction);
+                                //byte[] someBytes = StringToByteArray(additionalInformationForTransaction);
 
                                 int balance = 0;
-                                balance = OctopusLibrary.Deduct(OctValue * 10,additionalInformationForTransaction);
+                                balance = OctopusLibrary.Deduct(OctValue * 10, additionalInformationForTransaction);
                                 TransDataTime = DateTime.Now;
 
-                                if (balance == 100022 || balance == 100048 || balance ==100021)
+                                if (balance == 100022 || balance == 100048 || balance == 100021)
                                 {
                                     log.Info(string.Format(" Deduct Value {0} , Error Code {1}",
                 Convert.ToDecimal(OctValue).ToString("#,##.0"),
@@ -1247,7 +1350,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                                                 sqlResultTextBox.Text += "發生錯誤!!! " +
                                                                                          Environment.NewLine;
                                                                 sqlResultTextBox.Text += "請重試(八達通號碼 :" + cardId +
-                                                                                         ")"+Environment.NewLine;
+                                                                                         ")" + Environment.NewLine;
                                                                 sqlResultTextBox.ScrollToCaret();
                                                                 sqlResultTextBox.Refresh();
                                                                 //boxErrowNotSameCard.Caption =
@@ -1257,13 +1360,13 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                                         else//with 100022 Poll >100000
                                                         {
                                                             var TxnAmtStatus3 = OctDisplayPayAmount(OctValue);
-                                                            
+
                                                             sqlResultTextBox.Clear();
                                                             sqlResultTextBox.BackColor = Color.Red;
                                                             sqlResultTextBox.Text += "發生錯誤!!!" + PollStatus2 + Environment.NewLine;
                                                             sqlResultTextBox.Text += GetErrorMessage(PollStatus2) +
                                                                                      Environment.NewLine;
-                                                            sqlResultTextBox.Text +="請重試(八達通號碼 :" + cardId + ")";
+                                                            sqlResultTextBox.Text += "請重試(八達通號碼 :" + cardId + ")";
                                                             //sqlResultTextBox.ScrollToCaret();
                                                             sqlResultTextBox.Refresh();
 
@@ -1280,7 +1383,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                                             {
                                                                 newForm4.TopMost = true;
                                                                 //newForm4.BackColor = Color.Gray;
-                                                              //  newForm4.WindowState = FormWindowState.Maximized;
+                                                                //  newForm4.WindowState = FormWindowState.Maximized;
                                                                 //newForm4.Visible = true;
                                                                 newForm4.Activate();
                                                                 MessageBoxEx msgBoxError100022AfterTimeout =
@@ -1328,7 +1431,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                                                         OctopousIdleDisplay();
                                                                         newForm4.Close();
                                                                         FormCancelAndMinimize();
-                                                                        if (timer.Enabled==false)
+                                                                        if (timer.Enabled == false)
                                                                         {
                                                                             timer.Start();
                                                                         }
@@ -1339,7 +1442,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                                                 break;
                                                                 //newForm, GetErrorMessage(PollStatus4), "Error Code " + PollStatus4, MessageBoxButtons.RetryCancel);
                                                             }
-                                                            
+
                                                         }
 
                                                     }//End of For loop
@@ -1447,7 +1550,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
 
                                 #region Normal Operation
 
-                                if(balance<100000)  //Normal Operation
+                                if (balance < 100000)  //Normal Operation
                                 {
 
                                     string deviceID2 = string.Format("{0:x}", DevVerRec.DevID).ToUpper();
@@ -1477,21 +1580,21 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                     sqlResultTextBox.Text += "扣除金額: $" +
                                                              (Convert.ToDecimal(OctValue).ToString("#,##0.00")) +
                                                               Environment.NewLine;
-                                    sqlResultTextBox.Text +="餘額: $" + ((Convert.ToDecimal(balance)) / 10).ToString("#,##0.00")
-                                    +Environment.NewLine;
-                                                                
+                                    sqlResultTextBox.Text += "餘額: $" + ((Convert.ToDecimal(balance)) / 10).ToString("#,##0.00")
+                                    + Environment.NewLine;
+
 
                                     //(Convert.ToDecimal(PollStatus) / 10).ToString("#,##.0")
 
-                                   sqlResultTextBox.Refresh();
-                                   CardEnquirybtn.Enabled = true;
-                                   // reader.Close();
+                                    sqlResultTextBox.Refresh();
+                                    CardEnquirybtn.Enabled = true;
+                                    // reader.Close();
                                     if (timer.Enabled == false)
                                     {
                                         timer.Start();
                                     }
 
-                                    
+
 
                                 }
 
@@ -1618,7 +1721,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                     }
 
 
-               
+
 
 
 

@@ -153,6 +153,40 @@ namespace TestingForOctopusCommunication
 
             }
         }
-         }     
+
+        public void ErrorUpdateTableMisc()
+        {
+            try
+            {
+                var sqlConnection =
+                    new SqlConnection(
+                        ConfigurationManager.ConnectionStrings["Carpark_ClientConnectionMisc"].ConnectionString);
+                {
+                    if (sqlConnection.State != ConnectionState.Open)
+                    {
+                        sqlConnection.Close();
+                        sqlConnection.Open();
+                    }
+
+                    using (var command = sqlConnection.CreateCommand())
+                    {
+                        command.CommandTimeout = 55;
+                        command.CommandType = CommandType.Text;
+                        command.CommandText =
+                            "UPDATE OCTOPUS_TRANS_VIEW SET STATUS_ID= 2 WHERE STATUS_ID= 0";
+                        Form1.log.Info("SQL Statment " + command.CommandText);
+
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                Form1.log.Warn(" SQL have problem with Connection in the Update Statment!!!-- " + e);
+
+            }
+        }
+    }     
            
        }
