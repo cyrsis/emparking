@@ -154,7 +154,7 @@ namespace TestingForOctopusCommunication
             DetechSQLChangesForMisc();
 
             DateTime dateValue;
-            DateTime.TryParse("23:22:22", out dateValue);
+            DateTime.TryParse("23:59:12", out dateValue);
 
 
 
@@ -202,8 +202,8 @@ namespace TestingForOctopusCommunication
 
                             timer.Stop();
                             var OctValue = (int)reader["PAY_AMT"];
-                            var sqltransaction = "CAR_NO";
-                            var Ref_no = "REF_NO";
+                            var sqltransaction =(string)reader["CAR_NO"];
+                            var Ref_no = (string)reader["REF_NO"];
                             log.Info(string.Format("Car ID {0}) Payment Amount {1} Invoice Number {2} in progress...........",
                                 sqltransaction, Convert.ToDecimal(OctValue).ToString("#,##0.00"), Ref_no));
 
