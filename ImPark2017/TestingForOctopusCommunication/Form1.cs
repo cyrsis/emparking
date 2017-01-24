@@ -49,6 +49,8 @@ namespace TestingForOctopusCommunication
         public DateTime TransDataTime;
         public static Timer XfileTimer = new Timer();
 
+        public String PaymentType = null;
+
 
         //readonly string conString = DataLayer.Db.ConnectionString;
         public Form1()
@@ -152,7 +154,7 @@ namespace TestingForOctopusCommunication
 
         public void DetechSQLChanges()
         {
-
+            PaymentType = "HOUR_PARK_OCTOPUS";
             using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnection"].ConnectionString)) //Old Version
             {
                 if (sqlConnection.State != ConnectionState.Open)
@@ -250,7 +252,7 @@ namespace TestingForOctopusCommunication
 
         public void DetechSQLChangesForMisc()
         {
-
+            PaymentType = "MISC_TRANS_OCTOPUS";
             using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnectionMisc"].ConnectionString)) //Old Version
             {
                 if (sqlConnection.State != ConnectionState.Open)
@@ -259,7 +261,7 @@ namespace TestingForOctopusCommunication
                     sqlConnection.Open();
                 }
 
-                using (var command = new SqlCommand(@"SELECT TABLE_NAME, COLUMN_NAME, ID, PAY_AMT FROM OCTOPUS_TRANS_VIEW WHERE STATUS_ID=0", sqlConnection))
+                using (var command = new SqlCommand(@"SELECT MISC_ID , PAY_AMT FROM MISC_TRANS_OCTOPUS WHERE STATUS_ID=0", sqlConnection))
                 {
                     command.CommandTimeout = 55;
                     using (SqlDataReader reader = command.ExecuteReader())
@@ -269,9 +271,9 @@ namespace TestingForOctopusCommunication
 
                             timer.Stop();
                             var PAY_AMT = (int)reader["PAY_AMT"];
-                            var TABLE_NAME = (String)reader["TABLE_NAME"];
-                            var ID =(int)reader["ID"];
-                            var COLUMN_NAME = (String)reader["COLUMN_NAME"];
+                            var TABLE_NAME = (String)reader["MISC_ID"];
+                            var ID =(int)reader["MISC_ID"];
+                            var COLUMN_NAME = "MISC OCT";
                             log.Info(string.Format("Car ID {0}) Payment Amount {1} Invoice Number {2} in progress...........",
                                TABLE_NAME, Convert.ToDecimal(PAY_AMT).ToString("#,##0.00"), COLUMN_NAME));
 
@@ -282,7 +284,7 @@ namespace TestingForOctopusCommunication
 
                             DisplayTxtbox.Clear();
                             DisplayTxtbox.BackColor = Color.White;
-                            DisplayTxtbox.Text += "車牌號碼: " + COLUMN_NAME + Environment.NewLine;
+                            DisplayTxtbox.Text += "MISC: " + COLUMN_NAME + Environment.NewLine;
                             DisplayTxtbox.Text += "    付款: $" + Convert.ToDecimal(PAY_AMT).ToString("#,##0.00") + Environment.NewLine;
                             DisplayTxtbox.Text += "交易進行中........" + Environment.NewLine;
                             sqlResultTextBox.Clear();
@@ -502,6 +504,7 @@ namespace TestingForOctopusCommunication
                 var sql = new SqlClient();
 
                 sql.RemoveCurrentRecord();
+                sql.RemoveCurrentRecordMisc();
                 OctopusLibrary.TimeVer(ref DevVerRec);
                 OctopousIdleDisplay();
                 OctPressPoll.BackColor = Color.Lime;
@@ -1182,9 +1185,609 @@ namespace TestingForOctopusCommunication
         OctPressPoll:
             isBusy = true;
             CardEnquirybtn.Enabled = false;
-            CarParkingFeed();
+            if (PaymentType =="HOUR_PARK_OCTOPUS")
+            {
+                CarParkingFeed();
+            }
+            else
+            {
+                MiscFeed();
+            }
         }
+        private void MiscFeed()
+        {
+            using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnection"].ConnectionString))
+            {
+                if (sqlConnection.State != ConnectionState.Open)
+                {
+                    sqlConnection.Close();
+                    sqlConnection.Open();
+                }
 
+
+                string newVariable = @"SELECT  
+      [PAY_AMT], [UPDATE_DATE]
+  FROM MISC_TRANS_OCTOPUS
+  WHERE STATUS_ID = 2";
+                using (var command = new SqlCommand(newVariable, sqlConnection))
+                {
+                    command.CommandTimeout = 55;
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+
+                            var OctValue = (int)reader["PAY_AMT"];
+                            var sqltransaction = "MISC_FEED";
+                            var Ref_no = "20140210142314"; //20140210142314
+                            log.Info(string.Format("Car ID {0}) Payment Amount {1} Invoice Number {2}in progress...........",
+                                sqltransaction, Convert.ToDecimal(OctValue).ToString("#,##0.00"), Ref_no));
+
+                            //this.TopMost = true;
+                        //this.Show();
+                        //this.WindowState = FormWindowState.Maximized;
+                        // this.Activate()
+
+
+                        FirstPoll:
+                            OctopousInitDiplay();
+                            StringBuilder PollData = new StringBuilder(128);
+                            int PollStatus = 0;
+
+                            var TxnAmtStatus = OctDisplayPayAmount(OctValue);
+                            PollStatus = OctopusLibrary.Poll(0, 30.ToByte(), PollData);
+
+
+                            if (PollStatus < 100000) //if poll first do not have error
+                            {
+
+                                string[] temp = PollData.ToString().Split(",");
+                                string cardId = temp[0];
+                                //string cardId = PollData.ToString().Substring(0, 8);
+                                log.Info(string.Format("Sucessful Poll..Balance {0} CardID {1}",
+                                    (Convert.ToDecimal(PollStatus) / 10).ToString("#,##.0"), cardId));
+                            Deduct:
+
+                                string InvoiceNuberForAI = Ref_no.Substring(12, 2);
+
+                                //var additionalInformationForTransaction = InvoiceNuberForAI.ToCharArray();
+
+
+                                //char[] additionalInformationForTransaction = InvoiceNuberForAI.ToCharArray();;
+                                byte[] additionalInformationForTransaction = ASCIIEncoding.ASCII.GetBytes(InvoiceNuberForAI);
+
+                                Array.Resize(ref additionalInformationForTransaction, 7);// double ensure that is 7bytes array
+
+                                additionalInformationForTransaction[5] = 0x01;
+                                additionalInformationForTransaction[6] = 0x01;
+
+                                //additionalInformationForTransaction[0] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length- 4, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length-3, 1)));
+                                //additionalInformationForTransaction[1] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length- 2, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(InvoiceNuberForAI.Length-1, 1)));
+                                // additionalInformationForTransaction[4] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(4, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(5, 1)));
+                                //additionalInformationForTransaction[3] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(6, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(7, 1)));
+                                //additionalInformationForTransaction[4] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(8, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(9, 1)));
+                                //additionalInformationForTransaction[5] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(10, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(11, 1)));
+                                //additionalInformationForTransaction[6] = Convert.ToChar(Convert.ToInt16(InvoiceNuberForAI.Substring(12, 1)) * 16 + Convert.ToInt16(InvoiceNuberForAI.Substring(13, 1)));
+
+
+                                //byte[] someBytes = StringToByteArray(additionalInformationForTransaction);
+
+                                int balance = 0;
+                                balance = OctopusLibrary.Deduct(OctValue * 10, additionalInformationForTransaction);
+                                TransDataTime = DateTime.Now;
+
+                                if (balance == 100022 || balance == 100048 || balance == 100021)
+                                {
+                                    log.Info(string.Format(" Deduct Value {0} , Error Code {1}",
+                Convert.ToDecimal(OctValue).ToString("#,##.0"),
+                balance + "   " + GetErrorMessage(balance)));
+
+                                }
+
+
+                                else
+                                {
+                                    log.Info(string.Format(" Deduct Value {0} , Remain Value {1}",
+Convert.ToDecimal(OctValue).ToString("#,##.0"),
+(Convert.ToDecimal(balance) / 10).ToString("#,##.0")));
+                                }
+
+
+
+                                #region 100022
+
+                                if (balance == 100022) // Handle 100022
+                                {
+                                    timer.Stop();
+                                    log.Warn("XXX Error 100022 Occur " + GetErrorMessage(balance));
+
+                                    sqlResultTextBox.BackColor = Color.Red;
+
+                                    using (Form newForm = new Form())
+                                    {
+                                        newForm.TopMost = true;
+                                        newForm.Activate();
+                                        //newForm.BackColor = Color.Gray;
+                                        newForm.WindowState = FormWindowState.Maximized;
+                                        //newForm.Visible = true;
+                                        var result = MessageBox.Show(newForm,
+                                            GetErrorMessage(balance),
+                                            "錯誤碼" + balance, MessageBoxButtons.OK,
+                                            MessageBoxIcon.Error);
+                                        switch (result)
+                                        {
+                                            case DialogResult.OK:
+                                                {
+
+                                                    int PollStatus2 = 0;
+                                                    StringBuilder PollData2 = new StringBuilder(256);
+
+                                                    DateTime startTime = DateTime.Now;
+
+                                                    for (; ; )
+                                                    {
+                                                        var TxnAmtStatus1 = OctDisplayPayAmount(OctValue);
+                                                        PollStatus2 = OctopusLibrary.Poll(0, 30.ToByte(), PollData2);
+                                                        log.Info("PollStatus : " + PollStatus2);
+                                                        if (PollStatus2 < 100000) //Normal poll not the same card
+                                                        {
+                                                            var TxnAmtStatus2 = OctDisplayPayAmount(OctValue);
+                                                            string[] temp2 = PollData2.ToString().Split(",");
+                                                            string cardId2 = temp2[0];
+                                                            if (cardId == cardId2)
+                                                            {
+                                                                log.Info("***1000222 Same Card Found****");
+                                                                //exit = true;
+                                                                goto Deduct;
+                                                            }
+                                                            else //Not the same card
+                                                            {
+                                                                log.Info("*****100022 Not the Same Card Found*****");
+                                                                var TxnAmtStatus3 = OctDisplayPayAmount(OctValue);
+
+                                                                sqlResultTextBox.Clear();
+                                                                sqlResultTextBox.BackColor = Color.Red;
+                                                                sqlResultTextBox.Text += "發生錯誤!!! " +
+                                                                                         Environment.NewLine;
+                                                                sqlResultTextBox.Text += "請重試(八達通號碼 :" + cardId +
+                                                                                         ")" + Environment.NewLine;
+                                                                sqlResultTextBox.ScrollToCaret();
+                                                                sqlResultTextBox.Refresh();
+                                                                //boxErrowNotSameCard.Caption =
+                                                            }
+                                                        }
+
+                                                        else//with 100022 Poll >100000
+                                                        {
+                                                            var TxnAmtStatus3 = OctDisplayPayAmount(OctValue);
+
+                                                            sqlResultTextBox.Clear();
+                                                            sqlResultTextBox.BackColor = Color.Red;
+                                                            sqlResultTextBox.Text += "發生錯誤!!!" + PollStatus2 + Environment.NewLine;
+                                                            sqlResultTextBox.Text += GetErrorMessage(PollStatus2) +
+                                                                                     Environment.NewLine;
+                                                            sqlResultTextBox.Text += "請重試(八達通號碼 :" + cardId + ")";
+                                                            //sqlResultTextBox.ScrollToCaret();
+                                                            sqlResultTextBox.Refresh();
+
+
+                                                            OctopousInitDiplay();
+                                                            var TxnAmtStatus2 = OctDisplayPayAmount(OctValue);
+                                                            log.Info("XXXX 100022 Poll Error in First 20 secs" +
+                                                                     GetErrorMessage(PollStatus2));
+                                                        }
+
+                                                        if (DateTime.Now.Subtract(startTime).Seconds >= 28) //After 25 sec timeout
+                                                        {
+                                                            using (Form newForm4 = new Form())
+                                                            {
+                                                                newForm4.TopMost = true;
+                                                                //newForm4.BackColor = Color.Gray;
+                                                                //  newForm4.WindowState = FormWindowState.Maximized;
+                                                                //newForm4.Visible = true;
+                                                                newForm4.Activate();
+                                                                MessageBoxEx msgBoxError100022AfterTimeout =
+                                                                    MessageBoxExManager.CreateMessageBox(null);
+
+                                                                msgBoxError100022AfterTimeout.Caption = "八達通錯誤號碼" + balance;
+                                                                msgBoxError100022AfterTimeout.Text = GetErrorMessage(PollStatus2) +
+                                                                              "\n 請重試(八達通號碼 :" + cardId + ")";
+
+                                                                MessageBoxExButton btnRetry = new MessageBoxExButton();
+                                                                btnRetry.Text = "Retry";
+                                                                btnRetry.Value = "Retry";
+
+
+                                                                MessageBoxExButton btnNo = new MessageBoxExButton();
+                                                                btnNo.Text = "Cancel";
+                                                                btnNo.Value = "Cancel";
+
+                                                                msgBoxError100022AfterTimeout.AddButton(btnRetry);
+                                                                msgBoxError100022AfterTimeout.AddButton(btnNo);
+                                                                //msgBox.AddButtons(MessageBoxButtons.RetryCancel);
+                                                                msgBoxError100022AfterTimeout.Icon = MessageBoxExIcon.Warning;
+
+                                                                // msgBox.SaveResponseText = "Don't ask me again";
+                                                                // msgBox.AllowSaveResponse = true;
+
+                                                                msgBoxError100022AfterTimeout.Font = new Font("Tahoma", 11);
+                                                                //msgBox.Show(newForm2);
+                                                                string result2 = msgBoxError100022AfterTimeout.Show(newForm4);
+                                                                //newForm, GetErrorMessage(PollStatus4), "Error Code " + PollStatus4, MessageBoxButtons.RetryCancel);
+                                                                switch (result2)
+                                                                {
+                                                                    case MessageBoxExResult.Retry:
+                                                                        {
+                                                                            log.Info("***100022 with Retry  by Operator");
+                                                                            continue;
+                                                                        }
+
+                                                                    case MessageBoxExResult.Cancel:
+
+                                                                        log.Info("***100022 with Cancel  by Operator");
+                                                                        OctopousIdleDisplay();
+                                                                        var TxnAmtStatus3 = OctDisplayPayAmount(OctValue);
+                                                                        OctopousInitDiplay();
+                                                                        OctopousIdleDisplay();
+                                                                        newForm4.Close();
+                                                                        FormCancelAndMinimize();
+                                                                        if (timer.Enabled == false)
+                                                                        {
+                                                                            timer.Start();
+                                                                        }
+                                                                        goto EndOf100022;
+
+                                                                }
+
+                                                                break;
+                                                                //newForm, GetErrorMessage(PollStatus4), "Error Code " + PollStatus4, MessageBoxButtons.RetryCancel);
+                                                            }
+
+                                                        }
+
+                                                    }//End of For loop
+
+                                                    break;
+                                                }
+
+
+                                        }//End of switch
+                                    }
+                                EndOf100022:
+                                    ;
+                                }
+
+                                #endregion
+
+                                #region 100048 Insufficient Funds
+
+                                if (balance == 100048)
+                                {
+                                    timer.Stop();
+                                    log.Warn("XXXX Card do not have sufficient Fund " + GetErrorMessage(balance));
+
+                                    using (Form newForm = new Form()) //Normal MessgeBox
+                                    {
+                                        //MessageBeep(0 /*MB_OK*/);
+                                        newForm.TopMost = true;
+                                        newForm.Activate();
+
+                                        MessageBoxEx msgBox = MessageBoxExManager.CreateMessageBox(null);
+                                        msgBox.AddButtons(MessageBoxButtons.RetryCancel);
+
+                                        msgBox.Caption = GetErrorMessage(balance);
+                                        msgBox.Text = GetErrorMessage(balance) + "\n 會否用其他八達通?;";
+
+                                        //msgBox.Timeout = 10000;
+                                        //msgBox.TimeoutResult = TimeoutResult.Timeout;
+
+                                        msgBox.Icon = MessageBoxExIcon.Warning;
+
+                                        msgBox.Font = new Font("Microsoft YaHei", 10);
+
+                                        var result = msgBox.Show(newForm);
+
+                                        switch (result)
+                                        {
+                                            case MessageBoxExResult.Retry:
+                                                {
+                                                    log.Info("XXXX 100048 , Trying an other card");
+                                                    goto FirstPoll;
+
+                                                }
+
+                                            case MessageBoxExResult.Cancel:
+                                                {
+                                                    var sqlclient = new SqlClient();
+                                                    SqlClient.RemoveCurrentRecord(GetDeviceId(), cardId, 0, 999999);
+                                                    log.Info("*****100048 Occur Cancel by operator******");
+                                                    FormCancelAndMinimize();
+                                                    timer.Start();
+                                                    OctopousIdleDisplay();
+                                                    break;
+
+
+                                                }
+
+                                        }
+
+                                    }
+
+                                    //string deviceID3 = string.Format("{0:x}", DevVerRec.DevID).ToUpper();
+
+                                    //using (Form newForm = new Form())
+                                    //{
+                                    //    newForm.TopMost = true;
+                                    //    newForm.Activate();
+                                    //    var result = MessageBox.Show(newForm,
+                                    //        GetErrorMessage(balance) + "\n 會否用其他八達通? ",
+                                    //        "Error Code" + balance, MessageBoxButtons.RetryCancel);
+                                    //    switch (result)
+                                    //    {
+                                    //        case DialogResult.Retry:
+                                    //            {
+                                    //                log.Info("XXXX 100048 , Trying an other card");
+                                    //                goto FirstPoll;
+
+                                    //            }
+
+                                    //        case DialogResult.Cancel:
+                                    //            {
+                                    //                UpdateSQLTable(deviceID3, cardId, 0, 999999);
+                                    //                log.Info("*****100048 SQL Updated, cancel by operator******");
+                                    //                timer.Start();                                              
+
+                                    //                break;
+
+                                    //            }
+
+                                    //    }
+                                    //}
+
+
+                                }
+                                #endregion
+
+                                #region Normal Operation
+
+                                if (balance < 100000)  //Normal Operation
+                                {
+
+                                    string deviceID2 = string.Format("{0:x}", DevVerRec.DevID).ToUpper();
+                                    //var deviceID = device_struct.GetType().GetField("DevID");
+
+                                    byte[] GetExtraInfo = new byte[512];
+                                    int GetExtraStatus = OctopusLibrary.GetExtraInfo(0, 1, GetExtraInfo);
+                                    string lastAdd = System.Text.Encoding.UTF8.GetString(GetExtraInfo);
+                                    string ReceiptAddmessage = null;
+                                    if (lastAdd.IsNotNullOrEmpty())
+                                    {
+                                        ReceiptAddmessage = BuildLastAddMessage(lastAdd);
+                                    }
+
+                                    log.Info("----Normal SQL Updated----");
+                                    var sql = new SqlClient();
+
+                                    sql.SucessfulTransaactionUpdateMisc(deviceID2, cardId, balance, PollStatus, TransDataTime, ReceiptAddmessage);
+                                    log.Info("----Normal SQL Finishe----");
+
+
+
+                                    //sql.SucessfulTransaactionUpdateMisc(deviceID2, cardId, balance, PollStatus, TransDataTime, ReceiptAddmessage);
+
+
+
+
+                                    DisplayTxtbox.BackColor = Color.LightBlue;
+                                    sqlResultTextBox.Clear();
+                                    sqlResultTextBox.BackColor = Color.White;
+                                    sqlResultTextBox.Text += "八達通交易成功" + Environment.NewLine;
+                                    sqlResultTextBox.Text += "車牌:" + sqltransaction + Environment.NewLine;
+                                    sqlResultTextBox.Text += "八達通號碼 :" + cardId + Environment.NewLine;
+                                    sqlResultTextBox.Text += "扣除金額: $" +
+                                                             (Convert.ToDecimal(OctValue).ToString("#,##0.00")) +
+                                                              Environment.NewLine;
+                                    sqlResultTextBox.Text += "餘額: $" + ((Convert.ToDecimal(balance)) / 10).ToString("#,##0.00")
+                                    + Environment.NewLine;
+
+
+                                    //(Convert.ToDecimal(PollStatus) / 10).ToString("#,##.0")
+
+                                    sqlResultTextBox.Refresh();
+                                    CardEnquirybtn.Enabled = true;
+                                    // reader.Close();
+                                    if (timer.Enabled == false)
+                                    {
+                                        timer.Start();
+                                    }
+
+
+
+                                }
+
+                                #endregion
+
+                            }
+                            else //if there is a error on first poll
+                            {
+                                log.Warn(string.Format("First Poll Error Code {0} , Message {1}", PollStatus,
+                                    GetErrorMessage(PollStatus)));
+
+                                timer.Stop();
+
+                                #region FirstRollWithRetry
+                                //100001, 100005,100016,100017, 100021
+                                // 100003, 23, 25, 50, 55, 56 No retry
+                                if (PollStatus == 100001 || PollStatus == 100005 || PollStatus == 100016 || PollStatus == 100017 || PollStatus == 100021
+                                   || PollStatus == 100024 || PollStatus == 100032 || PollStatus == 100034 || PollStatus == 100035 || PollStatus == 100066)
+                                {
+                                    log.Warn(string.Format("First Poll Error Code {0}", GetErrorMessage(PollStatus)));
+                                    using (Form newForm = new Form())
+                                    {
+                                        newForm.TopMost = true;
+                                        newForm.Activate();
+                                        MessageBoxEx msgBox = MessageBoxExManager.CreateMessageBox(null);
+
+                                        msgBox.Caption = "Error Code " + PollStatus;
+                                        msgBox.Text = GetErrorMessage(PollStatus);
+
+                                        msgBox.AddButtons(MessageBoxButtons.RetryCancel);
+                                        msgBox.Icon = MessageBoxExIcon.Question;
+
+
+                                        // msgBox.SaveResponseText = "Don't ask me again";
+                                        // msgBox.AllowSaveResponse = true;
+
+                                        msgBox.Font = new Font("Tahoma", 10);
+                                        var result = msgBox.Show(newForm);
+                                        //newForm, GetErrorMessage(PollStatus4), "Error Code " + PollStatus4, MessageBoxButtons.RetryCancel);
+                                        switch (result)
+                                        {
+                                            case MessageBoxExResult.Retry:
+                                                {
+                                                    log.Info("First Poll Error with Retry  by Operator");
+                                                    goto FirstPoll;
+                                                }
+
+
+                                            case MessageBoxExResult.Cancel:
+                                                log.Info("First Poll Error with Cancel  by Operator");
+                                                string deviceID2 = string.Format("{0:x}", DevVerRec.DevID).ToUpper();
+                                                var sql = new SqlClient();
+                                                sql.RemoveCurrentRecord();
+                                                timer.Start();
+                                                OctopusLibrary.TxnAmt(0, -30000, 0, 0);
+                                                break;
+
+                                        }
+                                    }
+
+                                }
+                                #endregion
+
+                                #region Frist Poll Block Card
+
+                                else if (PollStatus == 100019)
+                                {
+                                    log.Info(string.Format("**Block Card {0}  Card ID {1}", PollStatus, "Block Card"));
+                                    //using (Form newForm = new Form()) // Display Error
+                                    //{
+                                    //    newForm.TopMost = true;
+                                    //    newForm.Activate();
+                                    //    MessageBox.Show(newForm, GetErrorMessage(PollStatus));
+                                    //
+
+                                    using (Form newForm9 = new Form()) //MessageBoxTemplate
+                                    {
+                                        //MessageBeep(0 /*MB_OK*/);
+                                        newForm9.TopMost = true;
+                                        newForm9.Activate();
+
+                                        MessageBoxEx msgBox9 = MessageBoxExManager.CreateMessageBox(null);
+
+                                        msgBox9.Caption = "八達通發生錯誤";
+                                        msgBox9.Text = GetErrorMessage(PollStatus) + "\n錯誤號碼 :" + PollStatus + "\n會否用其他八達通????";
+
+                                        // msgBox.AddButtons(MessageBoxButtons.RetryCancel);
+                                        MessageBoxExButton btnRetry = new MessageBoxExButton();
+                                        btnRetry.Text = "是";
+                                        btnRetry.Value = "Retry";
+
+
+                                        MessageBoxExButton btnNo = new MessageBoxExButton();
+                                        btnNo.Text = "放棄";
+                                        btnNo.Value = "Cancel";
+
+                                        msgBox9.AddButton(btnRetry);
+                                        msgBox9.AddButton(btnNo);
+                                        msgBox9.Icon = MessageBoxExIcon.Warning;
+
+                                        msgBox9.Font = new Font("Microsoft YaHei", 10);
+
+                                        var result = msgBox9.Show(newForm9);
+                                        switch (result)
+                                        {
+                                            case MessageBoxExResult.Retry:
+                                                {
+
+                                                    goto FirstPoll;
+                                                }
+
+                                            case MessageBoxExResult.Cancel:
+                                                var sql = new SqlClient();
+                                                sql.RemoveCurrentRecord();
+                                                FormCancelAndMinimize();
+                                                OctopousInitDiplay();
+                                                OctopousIdleDisplay();
+                                                timer.Start();
+                                                break;
+
+                                        }
+
+
+                                    }
+
+
+
+
+
+
+
+                                }
+                                #endregion
+                                #region First Poll Error with No Retry
+                                //100003, 23, 25, 50, 55, 56
+                                else if (PollStatus == 100003 || PollStatus == 100023 || PollStatus == 100025 ||
+                                         PollStatus == 100050 || PollStatus == 100055 || PollStatus == 100056 ||
+                                         PollStatus == 100051)
+                                {
+                                    log.Warn(string.Format("First Poll Error Code {0}",
+                                        GetErrorMessage(PollStatus)));
+                                    using (Form newForm = new Form())
+                                    {
+                                        newForm.TopMost = true;
+
+                                        newForm.Activate();
+
+                                        MessageBoxEx msgBox = MessageBoxExManager.CreateMessageBox(null);
+
+                                        msgBox.Caption = "Error Code " + PollStatus;
+                                        msgBox.Text = GetErrorMessage(PollStatus);
+
+                                        msgBox.AddButtons(MessageBoxButtons.OK);
+                                        msgBox.Icon = MessageBoxExIcon.Question;
+
+
+                                        // msgBox.SaveResponseText = "Don't ask me again";
+                                        // msgBox.AllowSaveResponse = true;
+
+                                        msgBox.Font = new Font("Tahoma", 10);
+                                        msgBox.Show(newForm);
+                                        //newForm, GetErrorMessage(PollStatus4), "Error Code " + PollStatus4, MessageBoxButtons.RetryCancel);
+                                        log.Info("First Poll Error with Cancel ny Default");
+                                        string deviceID2 =
+                                            string.Format("{0:x}", DevVerRec.DevID).ToUpper();
+                                        var sql = new SqlClient();
+                                        SqlClient.RemoveCurrentRecord();
+                                        timer.Start();
+
+                                        OctopousIdleDisplay();
+                                    }
+
+                                }
+
+                                #endregion
+
+
+                            }
+
+
+                        }
+
+                    }
+                }
+            }
+        }
         private void CarParkingFeed()
         {
             using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnection"].ConnectionString))
@@ -1196,7 +1799,7 @@ namespace TestingForOctopusCommunication
                 }
 
 
-                using (var command = new SqlCommand(@"SELECT  
+                string newVariable = @"SELECT  
        [REF_NO]
       ,[CAR_NO]
       ,HOUR_PARK_OCTOPUS.[PARK_ID]
@@ -1209,7 +1812,8 @@ namespace TestingForOctopusCommunication
       ,[CREATE_DATE]
       ,[EXPIRY_DATE]
   FROM [CARPARK_CLIENT].[dbo].[HOUR_PARK_OCTOPUS], [CARPARK_CLIENT].[dbo].[HOUR_PARK]
-  WHERE HOUR_PARK.ID = PARK_ID AND HOUR_PARK_OCTOPUS.STATUS_ID = 2", sqlConnection))
+  WHERE HOUR_PARK.ID = PARK_ID AND HOUR_PARK_OCTOPUS.STATUS_ID = 2";
+                using (var command = new SqlCommand(newVariable, sqlConnection))
                 {
                     command.CommandTimeout = 55;
                     using (SqlDataReader reader = command.ExecuteReader())
@@ -1567,9 +2171,16 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
 
                                     log.Info("----Normal SQL Updated----");
                                     var sql = new SqlClient();
+                                  
+                                        sql.SucessfulTransaactionUpdate(deviceID2, cardId, balance, PollStatus, TransDataTime, ReceiptAddmessage);
+                                        log.Info("----Normal SQL Finishe----");
 
-                                    sql.SucessfulTransaactionUpdate(deviceID2, cardId, balance, PollStatus, TransDataTime, ReceiptAddmessage);
-                                    log.Info("----Normal SQL Finishe----");
+                                    
+                                   
+                                        
+                                    
+
+
 
                                     DisplayTxtbox.BackColor = Color.LightBlue;
                                     sqlResultTextBox.Clear();
