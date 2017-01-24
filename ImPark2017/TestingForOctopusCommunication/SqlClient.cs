@@ -220,6 +220,8 @@ namespace TestingForOctopusCommunication
                 Form1.log.Warn(" SQL have problem with Connection in the Update Statment!!!-- " + e);
 
             }
+
+            RemoveCurrentRecordMisc();
         }
 
         public void RemoveCurrentRecordMisc(string deviceID2 = "", string cardID = "", int balance = 0, int ErrorStatus = 0)
@@ -228,7 +230,7 @@ namespace TestingForOctopusCommunication
             {
                 var sqlConnection =
                     new SqlConnection(
-                        ConfigurationManager.ConnectionStrings["Carpark_ClientConnectionMisc"].ConnectionString);
+                        ConfigurationManager.ConnectionStrings["Carpark_ClientConnection"].ConnectionString);
                 {
                     if (sqlConnection.State != ConnectionState.Open)
                     {

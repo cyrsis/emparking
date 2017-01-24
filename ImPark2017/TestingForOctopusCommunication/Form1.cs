@@ -148,8 +148,23 @@ namespace TestingForOctopusCommunication
 
         private void SQLChanges(object sender, EventArgs e)
         {
+            
+
             DetechSQLChanges();
             DetechSQLChangesForMisc();
+
+            DateTime dateValue;
+            DateTime.TryParse("23:22:22", out dateValue);
+
+
+
+            if (DateTime.Now.ToString("HH:mm:ss") == dateValue.ToString("HH:mm:ss"))
+            {
+                 XfileSFTP_Click(sender,e);
+                
+                 Thread.Sleep(3000);
+
+            }
         }
 
         public void DetechSQLChanges()
@@ -1028,39 +1043,39 @@ namespace TestingForOctopusCommunication
 
             //#endregion
 
-            log.Info("Hose Keeping call");
-            //var housekeepingstatus = OctopusLibrary.HouseKeeping();
-            //sqlResultTextBox.Text += DateTime.Now + "House keeping Call Status" + GetErrorMessage(housekeepingstatus);
-            //log.Info("Hose Keeping call status" +housekeepingstatus);
-            sqlResultTextBox.Text += DateTime.Now + "---Checking Internet Connection--" + Environment.NewLine;
-            log.Info(DateTime.Now + "---Checking Internet Connection---");
-
-
-
-            HttpWebRequest req;
-            HttpWebResponse resp;
-            try
-            {
-                req = (HttpWebRequest)WebRequest.Create("http://www.google.com");
-                resp = (HttpWebResponse)req.GetResponse();
-
-                if (resp.StatusCode.ToString().Equals("OK"))
-                {
-                    log.Info(DateTime.Now + "-- Networking  its connected.");
-                    sqlResultTextBox.Text += DateTime.Now + " ---Networking its connected" + Environment.NewLine;
-
-                }
-                else
-                {
-                    log.Info(DateTime.Now + " !! Networking  its not  connected.");
-                    sqlResultTextBox.Text += DateTime.Now + " !!! Networking is not connected--" + Environment.NewLine;
-                }
-            }
-            catch (Exception exc)
-            {
-                sqlResultTextBox.Text += DateTime.Now + "*** Something Went Really Wrong***" + Environment.NewLine;
-                log.Info(DateTime.Now + "*** Something Went Really Wrong****");
-            }
+//            log.Info("Hose Keeping call");
+//            //var housekeepingstatus = OctopusLibrary.HouseKeeping();
+//            //sqlResultTextBox.Text += DateTime.Now + "House keeping Call Status" + GetErrorMessage(housekeepingstatus);
+//            //log.Info("Hose Keeping call status" +housekeepingstatus);
+//            sqlResultTextBox.Text += DateTime.Now + "---Checking Internet Connection--" + Environment.NewLine;
+//            log.Info(DateTime.Now + "---Checking Internet Connection---");
+//
+//
+//
+//            HttpWebRequest req;
+//            HttpWebResponse resp;
+//            try
+//            {
+//                req = (HttpWebRequest)WebRequest.Create("http://www.google.com");
+//                resp = (HttpWebResponse)req.GetResponse();
+//
+//                if (resp.StatusCode.ToString().Equals("OK"))
+//                {
+//                    log.Info(DateTime.Now + "-- Networking  its connected.");
+//                    sqlResultTextBox.Text += DateTime.Now + " ---Networking its connected" + Environment.NewLine;
+//
+//                }
+//                else
+//                {
+//                    log.Info(DateTime.Now + " !! Networking  its not  connected.");
+//                    sqlResultTextBox.Text += DateTime.Now + " !!! Networking is not connected--" + Environment.NewLine;
+//                }
+//            }
+//            catch (Exception exc)
+//            {
+//                sqlResultTextBox.Text += DateTime.Now + "*** Something Went Really Wrong***" + Environment.NewLine;
+//                log.Info(DateTime.Now + "*** Something Went Really Wrong****");
+//            }
 
             
           //  sqlResultTextBox.Clear();
@@ -1512,6 +1527,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                                 {
                                                     var sqlclient = new SqlClient();
                                                     SqlClient.RemoveCurrentRecord(GetDeviceId(), cardId, 0, 999999);
+                                                    SqlClient.RemoveCurrentRecordMisc();
                                                     log.Info("*****100048 Occur Cancel by operator******");
                                                     FormCancelAndMinimize();
                                                     timer.Start();
@@ -1667,6 +1683,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                                 string deviceID2 = string.Format("{0:x}", DevVerRec.DevID).ToUpper();
                                                 var sql = new SqlClient();
                                                 sql.RemoveCurrentRecord();
+                                                
                                                 timer.Start();
                                                 OctopusLibrary.TxnAmt(0, -30000, 0, 0);
                                                 break;
