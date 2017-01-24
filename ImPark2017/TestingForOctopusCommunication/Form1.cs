@@ -493,39 +493,40 @@ namespace TestingForOctopusCommunication
             DataLayer.Db.ApplicationName = "Win Octopus Reader";
             DataLayer.Db.ConnectionTimeout = 900000000;
 
-               string status = CallGetSysInfo();
-                if (status.ToInt32() == 0)
-                {
-                    using (Form newForm = new Form()) //Normal MessgeBox
-                    {
-                        //MessageBeep(0 /*MB_OK*/);
-                        newForm.TopMost = true;
-                        newForm.Activate();
-
-                        MessageBoxEx msgBox = MessageBoxExManager.CreateMessageBox(null);
-                        msgBox.AddButtons(MessageBoxButtons.OK);
-
-                        msgBox.Caption = "";
-                        msgBox.Text = "黑名單過期，請聯絡技術 \n    支援。 ";
-
-                        //msgBox.Timeout = 10000;
-                        //msgBox.TimeoutResult = TimeoutResult.Timeout;
-
-                        msgBox.Icon = MessageBoxExIcon.Warning;
-
-                        msgBox.Font = new Font("Microsoft YaHei", 10);
-
-                        var result = msgBox.Show(newForm);
-
-                        switch (result)
-                        {
-                            case MessageBoxExResult.Ok:
-                                {
-                                }
-                                break;
-                        }
-                     }
-                }
+            //New function
+//               string status = CallGetSysInfo();
+//                if (status.ToInt32() == 0)
+//                {
+//                    using (Form newForm = new Form()) //Normal MessgeBox
+//                    {
+//                        //MessageBeep(0 /*MB_OK*/);
+//                        newForm.TopMost = true;
+//                        newForm.Activate();
+//
+//                        MessageBoxEx msgBox = MessageBoxExManager.CreateMessageBox(null);
+//                        msgBox.AddButtons(MessageBoxButtons.OK);
+//
+//                        msgBox.Caption = "";
+//                        msgBox.Text = "黑名單過期，請聯絡技術 \n    支援。 ";
+//
+//                        //msgBox.Timeout = 10000;
+//                        //msgBox.TimeoutResult = TimeoutResult.Timeout;
+//
+//                        msgBox.Icon = MessageBoxExIcon.Warning;
+//
+//                        msgBox.Font = new Font("Microsoft YaHei", 10);
+//
+//                        var result = msgBox.Show(newForm);
+//
+//                        switch (result)
+//                        {
+//                            case MessageBoxExResult.Ok:
+//                                {
+//                                }
+//                                break;
+//                        }
+//                     }
+//                }
             if (formloadCommunicateStatus == 0)
             {
                 var sql = new SqlClient();
