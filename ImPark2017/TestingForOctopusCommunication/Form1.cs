@@ -49,7 +49,7 @@ namespace TestingForOctopusCommunication
         public DateTime TransDataTime;
         public static Timer XfileTimer = new Timer();
 
-        public String PaymentType = null;
+        public String  PaymentType = null;
 
 
         //readonly string conString = DataLayer.Db.ConnectionString;
@@ -265,7 +265,7 @@ namespace TestingForOctopusCommunication
         public void DetechSQLChangesForMisc()
         {
             
-            using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnectionMisc"].ConnectionString)) //Old Version
+            using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnection"].ConnectionString)) //Old Version
             {
                 if (sqlConnection.State != ConnectionState.Open)
                 {
@@ -283,7 +283,7 @@ namespace TestingForOctopusCommunication
 
                             timer.Stop();
                             var PAY_AMT = (int)reader["PAY_AMT"];
-                            var TABLE_NAME = (String)reader["MISC_ID"];
+                            var TABLE_NAME = "MISC_ID";
                             var ID =(int)reader["MISC_ID"];
                             var COLUMN_NAME = "MISC OCT";
                             log.Info(string.Format("Car ID {0}) Payment Amount {1} Invoice Number {2} in progress...........",
@@ -1197,11 +1197,11 @@ namespace TestingForOctopusCommunication
         OctPressPoll:
             isBusy = true;
             CardEnquirybtn.Enabled = false;
-            if (PaymentType =="HOUR_PARK_OCTOPUS")
+            if (PaymentType == "HOUR_PARK_OCTOPUS")
             {
                 CarParkingFeed();
             }
-            else
+            else if(PaymentType == "MISC_TRANS_OCTOPUS")
             {
                 MiscFeed();
             }
