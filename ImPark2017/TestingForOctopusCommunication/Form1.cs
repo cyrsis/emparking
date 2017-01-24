@@ -154,7 +154,8 @@ namespace TestingForOctopusCommunication
 
         public void DetechSQLChanges()
         {
-            PaymentType = "HOUR_PARK_OCTOPUS";
+           
+           
             using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnection"].ConnectionString)) //Old Version
             {
                 if (sqlConnection.State != ConnectionState.Open)
@@ -164,9 +165,19 @@ namespace TestingForOctopusCommunication
                 }
 
                 using (var command = new SqlCommand(@"SELECT  
-    [PAY_AMT]
-  FROM OCTOPUS_TRANS_VIEW
-  WHERE STATUS_ID = 0", sqlConnection))
+       [REF_NO]
+      ,[CAR_NO]
+      ,HOUR_PARK_OCTOPUS.[PARK_ID]
+      ,HOUR_PARK_OCTOPUS.[PAY_AMT]
+      ,[DEVICE_ID]
+      ,[OCTOPUS_CARD_NO]
+      ,[REMAIN_VALUE]
+      ,[TRANS_DATE_TIME]
+      ,[TRANS_NO]
+      ,[CREATE_DATE]
+      ,[EXPIRY_DATE]
+  FROM [CARPARK_CLIENT].[dbo].[HOUR_PARK_OCTOPUS], [CARPARK_CLIENT].[dbo].[HOUR_PARK]
+  WHERE HOUR_PARK.ID = PARK_ID AND HOUR_PARK_OCTOPUS.STATUS_ID = 0", sqlConnection))
                 {
                     command.CommandTimeout = 55;
                     using (SqlDataReader reader = command.ExecuteReader())
@@ -237,6 +248,7 @@ namespace TestingForOctopusCommunication
                             var sqlforEnableTransaction = new SqlClient();
                             log.Info("Change Transaction to Pending.......");
                             sqlforEnableTransaction.ErrorUpdateTable();
+                            PaymentType = "HOUR_PARK_OCTOPUS";
 
                             reader.Close();
 
@@ -252,7 +264,7 @@ namespace TestingForOctopusCommunication
 
         public void DetechSQLChangesForMisc()
         {
-            PaymentType = "MISC_TRANS_OCTOPUS";
+            
             using (var sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["Carpark_ClientConnectionMisc"].ConnectionString)) //Old Version
             {
                 if (sqlConnection.State != ConnectionState.Open)
@@ -333,7 +345,7 @@ namespace TestingForOctopusCommunication
                             var sqlforEnableTransaction = new SqlClient();
                             log.Info("Change Transaction to Pending.......");
                             sqlforEnableTransaction.ErrorUpdateTableMisc();
-
+                            PaymentType = "MISC_TRANS_OCTOPUS";
                             reader.Close();
 
 
