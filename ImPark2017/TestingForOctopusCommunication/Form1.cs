@@ -154,7 +154,7 @@ namespace TestingForOctopusCommunication
             DetechSQLChangesForMisc();
 
             DateTime dateValue;
-            DateTime.TryParse("23:59:12", out dateValue);
+            DateTime.TryParse("23:59:00", out dateValue);
 
 
 
