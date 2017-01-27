@@ -50,6 +50,7 @@ namespace TestingForOctopusCommunication
         public static Timer XfileTimer = new Timer();
 
         public String  PaymentType = null;
+        private System.Threading.Timer timer2;
 
 
         //readonly string conString = DataLayer.Db.ConnectionString;
@@ -153,18 +154,18 @@ namespace TestingForOctopusCommunication
             DetechSQLChanges();
             DetechSQLChangesForMisc();
 
-            DateTime dateValue;
-            DateTime.TryParse("23:59:00", out dateValue);
-
-
-
-            if (DateTime.Now.ToString("HH:mm:ss") == dateValue.ToString("HH:mm:ss"))
-            {
-                 XfileSFTP_Click(sender,e);
-                
-                 Thread.Sleep(3000);
-
-            }
+//            DateTime dateValue;
+//            DateTime.TryParse("23:59:00", out dateValue);
+//
+//
+//
+//            if (DateTime.Now.ToString("HH:mm:ss") == dateValue.ToString("HH:mm:ss"))
+//            {
+//                 XfileSFTP_Click(sender,e);
+//                
+//                 Thread.Sleep(3000);
+//
+//            }
         }
 
         public void DetechSQLChanges()
@@ -373,6 +374,28 @@ namespace TestingForOctopusCommunication
             }
         }
 
+        private void SetUpTimer(TimeSpan alertTime)
+        {
+            DateTime current = DateTime.Now;
+            TimeSpan timeToGo = alertTime - current.TimeOfDay;
+            if (timeToGo < TimeSpan.Zero)
+            {
+                return;//time already passed
+            }
+            this.timer2 = new System.Threading.Timer(x =>
+            {
+                this.SomeMethodRunsAt2359();
+            }, null, timeToGo, Timeout.InfiniteTimeSpan);
+        }
+
+        private void SomeMethodRunsAt2359()
+        {
+            XfileSFTP_Click(sender, e);
+
+            Thread.Sleep(3000);
+            
+        }
+
 
         private void OctGUINormalState()
         {
@@ -465,6 +488,8 @@ namespace TestingForOctopusCommunication
 
         private void Form1_Load(object sender, EventArgs e)
         {
+
+            
             // log4net.ILog log = log4net.LogManager.GetLogger(this.GetType());
             log.Info("_____The program loaded______");
 
@@ -545,7 +570,7 @@ namespace TestingForOctopusCommunication
                 timer.Interval = 2000;
                 timer.Start();
 
-
+                SetUpTimer(new TimeSpan(23, 59, 00));
                 var DailyTime = "11:59:00";
                 var timeParts = DailyTime.Split(new char[1] { ':' });
 
