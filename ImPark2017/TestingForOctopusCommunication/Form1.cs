@@ -390,10 +390,47 @@ namespace TestingForOctopusCommunication
 
         private void SomeMethodRunsAt2359()
         {
-            XfileSFTP_Click(sender, e);
+            
+            isBusy = true;
+            log.Info("---- User Request XFile and Upload the EOD----");
+            OctopousNotInServiceDisplay();
+            OctPressPoll.Text = "八達通正進行結數";
+            OctPressPoll.Enabled = false;
+
+            CheckQctopusConnectionForNormalOperation();
+            StringBuilder XFileName = new StringBuilder(256); //Working example in here
+            int Octstatus = OctopusLibrary.XFile(XFileName);
+            string[] FileName = XFileName.ToString().Split(" ").ToArray(); //Working example
+            //int Octstatus = 0;
+            sqlResultTextBox.Clear();
+            log.Info("---- User Request XFile---");
+            sqlResultTextBox.Text += DateTime.Now + "  ---- User Request XFile---" + Environment.NewLine;
+            if (Octstatus == 0)
+            {
+                //sqlResultTextBox.Text += "File Name : " + XFileName.ToString() + Environment.NewLine;
+                sqlResultTextBox.Text += DateTime.Now + "  ---XFile  Genereated Sucessfully" + Environment.NewLine;
+                foreach (var s in FileName)
+                {
+                    sqlResultTextBox.Text += DateTime.Now + "  ---XFile Name :" + s + Environment.NewLine;
+                    log.Info("---XFile  File Name : " + s);
+                }
+                sqlResultTextBox.Text += DateTime.Now + "---XFile  Genereated Sucessfully----" + Environment.NewLine;
+                log.Info("---XFile  Genereated Sucessfully----");
+
+                sqlResultTextBox.Refresh();
+                //log.Info("File Name : " + XFileName.ToString());
+                OctGUINormalState();
+            }
+            else
+            {
+                sqlResultTextBox.Text += DateTime.Now + "  ---XFile Failed-- Error Code" + Octstatus + Environment.NewLine;
+                log.Info("---XFile Failed-- Error Code" + Octstatus);
+
+            }
 
             Thread.Sleep(3000);
-            
+
+            isBusy = false;
         }
 
 
@@ -570,7 +607,7 @@ namespace TestingForOctopusCommunication
                 timer.Interval = 2000;
                 timer.Start();
 
-                SetUpTimer(new TimeSpan(23, 59, 00));
+                SetUpTimer(new TimeSpan(00, 00, 00));
                 var DailyTime = "11:59:00";
                 var timeParts = DailyTime.Split(new char[1] { ':' });
 
@@ -844,6 +881,7 @@ namespace TestingForOctopusCommunication
             timer.Interval = 2000;
             timer.Start();
             log.Info("Monitor SQL Changes Re- Start");
+           // SetUpTimer(new TimeSpan(12, 52, 00)); //Test for Timer
         }
 
         private void HouseKeeping_Click(object sender, EventArgs e)
