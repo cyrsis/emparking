@@ -41,6 +41,7 @@ namespace TestingForOctopusCommunication
         //Here is the once-per-class call to initialize the log object
         public static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         public static Timer timer = new Timer();
+        public static Timer timer2 = new Timer();
         public OctopusLibrary.DevVerRec DevVerRec = new OctopusLibrary.DevVerRec();
         private static IScheduler _scheduler;
         private int _maxWidth;
@@ -50,7 +51,7 @@ namespace TestingForOctopusCommunication
         public static Timer XfileTimer = new Timer();
 
         public String  PaymentType = null;
-        private System.Threading.Timer timer2;
+        
 
 
         //readonly string conString = DataLayer.Db.ConnectionString;
@@ -145,6 +146,25 @@ namespace TestingForOctopusCommunication
         private Size MeasureString(string str, int maxWidth)
         {
             return MeasureString(str, maxWidth, this.Font);
+        }
+
+        private void DayEnd(object sender, EventArgs e)
+        {
+            DateTime dateValue;
+            DateTime.TryParse("0:00:0", out dateValue);
+
+
+
+            if (DateTime.Now.ToString("HH:mm") == dateValue.ToString("HH:mm"))
+            {
+                timer2.Stop();
+                XfileSFTP_Click(sender, e);
+                //MessageBox.Show("Wroking");
+
+                Thread.Sleep(61000);
+
+            }
+            timer2.Start();
         }
 
         private void SQLChanges(object sender, EventArgs e)
@@ -374,63 +394,24 @@ namespace TestingForOctopusCommunication
             }
         }
 
-        private void SetUpTimer(TimeSpan alertTime)
-        {
-            DateTime current = DateTime.Now;
-            TimeSpan timeToGo = alertTime - current.TimeOfDay;
-            if (timeToGo < TimeSpan.Zero)
-            {
-                return;//time already passed
-            }
-            this.timer2 = new System.Threading.Timer(x =>
-            {
-                this.SomeMethodRunsAt2359();
-            }, null, timeToGo, Timeout.InfiniteTimeSpan);
-        }
+//        private void SetUpTimer(TimeSpan alertTime)
+//        {
+//            DateTime current = DateTime.Now;
+//            TimeSpan timeToGo = alertTime - current.TimeOfDay;
+//            if (timeToGo < TimeSpan.Zero)
+//            {
+//                return;//time already passed
+//            }
+//            this.timer2 = new System.Threading.Timer(x =>
+//            {
+//                this.SomeMethodRunsAt2359();
+//            }, null, timeToGo, Timeout.InfiniteTimeSpan);
+//        }
 
         private void SomeMethodRunsAt2359()
         {
-            
-            isBusy = true;
-            log.Info("---- User Request XFile and Upload the EOD----");
-            OctopousNotInServiceDisplay();
-            OctPressPoll.Text = "八達通正進行結數";
-            OctPressPoll.Enabled = false;
 
-            CheckQctopusConnectionForNormalOperation();
-            StringBuilder XFileName = new StringBuilder(256); //Working example in here
-            int Octstatus = OctopusLibrary.XFile(XFileName);
-            string[] FileName = XFileName.ToString().Split(" ").ToArray(); //Working example
-            //int Octstatus = 0;
-            sqlResultTextBox.Clear();
-            log.Info("---- User Request XFile---");
-            sqlResultTextBox.Text += DateTime.Now + "  ---- User Request XFile---" + Environment.NewLine;
-            if (Octstatus == 0)
-            {
-                //sqlResultTextBox.Text += "File Name : " + XFileName.ToString() + Environment.NewLine;
-                sqlResultTextBox.Text += DateTime.Now + "  ---XFile  Genereated Sucessfully" + Environment.NewLine;
-                foreach (var s in FileName)
-                {
-                    sqlResultTextBox.Text += DateTime.Now + "  ---XFile Name :" + s + Environment.NewLine;
-                    log.Info("---XFile  File Name : " + s);
-                }
-                sqlResultTextBox.Text += DateTime.Now + "---XFile  Genereated Sucessfully----" + Environment.NewLine;
-                log.Info("---XFile  Genereated Sucessfully----");
-
-                sqlResultTextBox.Refresh();
-                //log.Info("File Name : " + XFileName.ToString());
-                OctGUINormalState();
-            }
-            else
-            {
-                sqlResultTextBox.Text += DateTime.Now + "  ---XFile Failed-- Error Code" + Octstatus + Environment.NewLine;
-                log.Info("---XFile Failed-- Error Code" + Octstatus);
-
-            }
-
-            Thread.Sleep(3000);
-
-            isBusy = false;
+            button1.PerformClick();
         }
 
 
@@ -607,9 +588,13 @@ namespace TestingForOctopusCommunication
                 timer.Interval = 2000;
                 timer.Start();
 
-                SetUpTimer(new TimeSpan(00, 00, 00));
-                var DailyTime = "11:59:00";
-                var timeParts = DailyTime.Split(new char[1] { ':' });
+                timer2.Tick += DayEnd;
+                timer2.Interval = 100;
+                timer2.Start();
+                //SetUpTimer(new TimeSpan(0, 00, 01));
+
+//                var DailyTime = "11:59:00";
+//                var timeParts = DailyTime.Split(new char[1] { ':' });
 
                 //XfileTimer.Interval = 7200000;    // milliseconds
                 //XfileTimer.Tick += XfileSFTP_Click;
@@ -881,7 +866,11 @@ namespace TestingForOctopusCommunication
             timer.Interval = 2000;
             timer.Start();
             log.Info("Monitor SQL Changes Re- Start");
-           // SetUpTimer(new TimeSpan(12, 52, 00)); //Test for Timer
+            timer2.Tick += DayEnd;
+            timer2.Interval = 100;
+            timer2.Start();
+            //SetUpTimer(new TimeSpan(13, 00, 01));
+            // SetUpTimer(new TimeSpan(12, 52, 00)); //Test for Timer
         }
 
         private void HouseKeeping_Click(object sender, EventArgs e)
