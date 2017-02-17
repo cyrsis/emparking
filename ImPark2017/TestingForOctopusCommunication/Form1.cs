@@ -523,11 +523,11 @@ namespace TestingForOctopusCommunication
                 //f2.Activate();
                 f2.Show();
             }
-            ISchedulerFactory schedulerFactory = new StdSchedulerFactory(); //Add job
-            _scheduler = schedulerFactory.GetScheduler();
-            _scheduler.Start();
-            log.Info("Communication Status starting Scheduler");
-            AddJob();
+           // ISchedulerFactory schedulerFactory = new StdSchedulerFactory(); //Add job
+            //_scheduler = schedulerFactory.GetScheduler();
+          //  _scheduler.Start();
+           // log.Info("Communication Status starting Scheduler");
+          //  AddJob();
 
         FirstCommunication:
 
@@ -760,7 +760,7 @@ namespace TestingForOctopusCommunication
         {
             Form1.IMyJob myJob = new Form1.MyJob(); //This Constructor needs to be parameterless
             JobDetailImpl jobDetail = new JobDetailImpl("Job1", "Group1", myJob.GetType());
-            CronTriggerImpl trigger = new CronTriggerImpl("Trigger1", "Group1", "0 0/1 * * * ?"); //
+            CronTriggerImpl trigger = new CronTriggerImpl("Trigger1", "Group1", "0 0/60 * * * ?"); //
             //run every minute between the hours of 8am and 5pm
             _scheduler.ScheduleJob(jobDetail, trigger);
             DateTimeOffset? nextFireTime = trigger.GetNextFireTimeUtc();
