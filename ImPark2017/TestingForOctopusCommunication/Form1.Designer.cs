@@ -233,7 +233,7 @@ namespace TestingForOctopusCommunication
             this.Controls.Add(this.Status);
             this.Font = new System.Drawing.Font("新細明體", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.Name = "Form1";
-            this.Text = "IMPARK Octopus Application Release 3.79 (14-02-2017 )";
+            this.Text = "IMPARK Octopus Application Release 4 (17-02-2017 )";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.Resize += new System.EventHandler(this.Form1_Resize);
