@@ -414,6 +414,17 @@ namespace TestingForOctopusCommunication
             button1.PerformClick();
         }
 
+        private void OctGUICompleteState()
+        {
+            OctopousInitDiplay();
+            OctPressPoll.BackColor = Color.Blue;
+            OctPressPoll.Text = "交易已完成";
+            OctPressPoll.Enabled = false;
+            CardEnquirybtn.Text = "查詢八達通";
+            CardEnquirybtn.BackColor = Color.Yellow;
+            CardEnquirybtn.Enabled = true;
+        }
+
 
         private void OctGUINormalState()
         {
@@ -1650,6 +1661,7 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                     var sql = new SqlClient();
 
                                     sql.SucessfulTransaactionUpdateMisc(deviceID2, cardId, balance, PollStatus, TransDataTime, ReceiptAddmessage);
+                                    OctGUICompleteState(); 
                                     log.Info("----Normal SQL Finishe----");
 
 
@@ -2255,7 +2267,8 @@ Convert.ToDecimal(OctValue).ToString("#,##.0"),
                                     var sql = new SqlClient();
                                   
                                         sql.SucessfulTransaactionUpdate(deviceID2, cardId, balance, PollStatus, TransDataTime, ReceiptAddmessage);
-                                        log.Info("----Normal SQL Finishe----");
+                                    OctGUICompleteState();    
+                                    log.Info("----Normal SQL Finishe----");
 
                                     
                                    
