@@ -596,7 +596,7 @@ namespace TestingForOctopusCommunication
                 //Thread.Sleep(100);
                 //Enable SQL detechation
                 timer.Tick += SQLChanges;
-                timer.Interval = 2000;
+                timer.Interval = 3000;
                 timer.Start();
 
                 timer2.Tick += DayEnd;
